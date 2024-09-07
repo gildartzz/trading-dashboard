@@ -583,14 +583,14 @@ def main():
                 st.session_state.current_page = "Monte Carlo"
 
     if not st.session_state.seen_welcome:
-        st.title("Welcome Associate!")
+        st.title("Welcome Trader!")
         st.write('')
         st.write('')
         st.write('')
         st.write('')
         st.markdown("""
     <h1 style='color: #ADD8E6;'>
-    To access the Advanced Trading Dashboard, Click 'Enter Dashboard' in the sidebar to begin.
+    To access the Trading Dashboard, Click 'Enter Dashboard' in the sidebar to begin.
     </h1>
     """, unsafe_allow_html=True)
     elif st.session_state.df is None or 'Profit' not in st.session_state.df.columns:
