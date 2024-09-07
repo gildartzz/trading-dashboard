@@ -82,7 +82,7 @@ def extract_and_clean_table(df, start_row, end_row):
 
 def extract_tables(excel_file_path):
     df = pd.read_excel(excel_file_path, header=None)
-    positions_start = df[df.iloc[:, 0] == 'Positions'].index[0] + 0
+    positions_start = df[df.iloc[:, 0] == 'Positions'].index[0] + 1
     orders_start = df[df.iloc[:, 0] == 'Orders'].index[0] + 1
     positions_table = extract_and_clean_table(df, positions_start, orders_start - 1)
     return positions_table
