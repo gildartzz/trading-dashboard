@@ -512,6 +512,20 @@ def centered_button(label, key):
         </div>
     """
     
+def add_about_section():
+    with st.sidebar.expander("About", expanded=False):
+        st.write("""
+        ## Advanced Trading Dashboard
+        
+        This app was developed by Your Name.
+        
+        ### Contact:
+        - GitHub: [Your GitHub Profile](https://github.com/yourusername)
+        - LinkedIn: [Your LinkedIn Profile](https://www.linkedin.com/in/yourprofile)
+        
+        For questions or feedback, please reach out!
+        """)
+
 def main():
     inject_custom_css()
 
@@ -525,7 +539,7 @@ def main():
         else:
             st.warning("Logo not found. Please check the assets folder.")
         
-        st.sidebar.markdown('<br><br><br><br>', unsafe_allow_html=True)
+        st.sidebar.markdown('<br><br>', unsafe_allow_html=True)
 
         if not st.session_state.seen_welcome:
             st.markdown("""
@@ -581,6 +595,11 @@ def main():
             
             if st.button("🎲 Monte Carlo Simulation", key="btn_monte_carlo", use_container_width=True):
                 st.session_state.current_page = "Monte Carlo"
+
+            st.markdown("---")
+            
+            # Add the About section here
+            add_about_section()
 
     if not st.session_state.seen_welcome:
         st.title("Welcome Associate!")
