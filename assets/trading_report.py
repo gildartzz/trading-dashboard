@@ -12,43 +12,41 @@ import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 
-
-
 st.set_page_config(page_title="Advanced Trading Dashboard", layout="wide")
 st.markdown("""
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
     """, unsafe_allow_html=True)
 
-
 if 'seen_welcome' not in st.session_state:
     st.session_state.seen_welcome = False
+if 'current_page' not in st.session_state:
+    st.session_state.current_page = "Overview"
+if 'df' not in st.session_state:
+    st.session_state.df = None
 
-# Function to detect Streamlit theme
+# Load logo
+logo_path = os.path.join('assets', 'LOGO.png')
+if os.path.exists(logo_path):
+    logo = Image.open(logo_path)
+else:
+    logo = None
+    
 def get_streamlit_theme():
     try:
         theme = st.get_option("theme.primaryColor")
         if theme == None:
             return "light"
         r, g, b = int(theme[1:3], 16), int(theme[3:5], 16), int(theme[5:7], 16)
-        if (r * 0.299 + g * 0.587 + b * 0.114) > 186:
-            return "light"
-        else:
-            return "dark"
+        return "light" if (r * 0.299 + g * 0.587 + b * 0.114) > 186 else "dark"
     except:
         return "light"
 
-# Function to set chart style
 def set_chart_style(fig, ax):
     theme = get_streamlit_theme()
-    if theme == "dark":
-        plt.style.use("dark_background")
-        bg_color = '#0E1117'  # Streamlit's dark background color
-        text_color = '#FAFAFA'  # Light text for dark background
-    else:
-        plt.style.use("dark_background")  # Force dark background
-        bg_color = '#1E1E1E'  # Dark background color
-        text_color = '#FFFFFF'  # White text for dark background
+    bg_color = '#0E1117' if theme == "dark" else '#1E1E1E'
+    text_color = '#FAFAFA'
 
+    plt.style.use("dark_background")
     fig.patch.set_facecolor(bg_color)
     ax.set_facecolor(bg_color)
     
@@ -62,88 +60,47 @@ def set_chart_style(fig, ax):
 
     return bg_color, text_color
 
-
 def extract_and_clean_table(df, start_row, end_row):
-    """Extract and clean a specific table from the DataFrame."""
-    # Extract the table
     table_df = df.iloc[start_row:end_row].reset_index(drop=True)
-    
-    # Set the column names and drop the header row
     table_df.columns = range(len(table_df.columns))
     table_df = table_df.drop(0).reset_index(drop=True)
     
-    # Clean the data
     for col in table_df.columns:
-        # Try to convert to datetime
         try:
             table_df[col] = pd.to_datetime(table_df[col], format='%Y.%m.%d %H:%M:%S', errors='raise')
-            continue
         except ValueError:
-            pass
-        
-        # Try to convert to float
-        try:
-            table_df[col] = pd.to_numeric(table_df[col], errors='raise')
-            continue
-        except ValueError:
-            pass
-        
-        # If it's a string column with potential float values (like '2.5 / 2.5')
-        if table_df[col].dtype == 'object':
             try:
-                table_df[col] = table_df[col].str.split(' / ').str[0].astype(float)
+                table_df[col] = pd.to_numeric(table_df[col], errors='raise')
             except ValueError:
-                pass
+                if table_df[col].dtype == 'object':
+                    try:
+                        table_df[col] = table_df[col].str.split(' / ').str[0].astype(float)
+                    except ValueError:
+                        pass
     
     return table_df
 
 def extract_tables(excel_file_path):
-    """Extract tables from the Excel file."""
-    # Read the Excel file
     df = pd.read_excel(excel_file_path, header=None)
-    
-    # Find the start and end rows for each table
     positions_start = df[df.iloc[:, 0] == 'Positions'].index[0] + 0
     orders_start = df[df.iloc[:, 0] == 'Orders'].index[0] + 1
-    #deals_start = df[df.iloc[:, 0] == 'Deals'].index[0] + 1
-    
-    # Extract and clean each table
     positions_table = extract_and_clean_table(df, positions_start, orders_start - 1)
-    #orders_table = extract_and_clean_table(df, orders_start, deals_start - 1)
-    #deals_table = extract_and_clean_table(df, deals_start, len(df))
-    
-    return positions_table #, orders_table, deals_table
+    return positions_table
 
 def finalize_positions_table(positions_table):
-    """Finalize the positions table by renaming columns and ensuring correct data types."""
-    # Define our expected column names
     expected_columns = [
         'Time', 'Position', 'Symbol', 'Type', 'Volume', 'Price', 'S/L', 'T/P',
         'Close_Time', 'Close_Price', 'Commission', 'Swap', 'Profit', 'Unused'
     ]
-    
-    # Rename columns
     positions_table.columns = expected_columns
-    
-    # Remove the 'Unused' column if it exists
     if 'Unused' in positions_table.columns:
         positions_table = positions_table.drop('Unused', axis=1)
     
-    # Ensure correct data types
     type_dict = {
-        'Time': 'datetime64[ns]',
-        'Position': 'int64',
-        'Symbol': 'str',
-        'Type': 'str',
-        'Volume': 'float64',
-        'Price': 'float64',
-        'S/L': 'float64',
-        'T/P': 'float64',
-        'Close_Time': 'datetime64[ns]',
-        'Close_Price': 'float64',
-        'Commission': 'float64',
-        'Swap': 'float64',
-        'Profit': 'float64'
+        'Time': 'datetime64[ns]', 'Position': 'int64', 'Symbol': 'str', 'Type': 'str',
+        'Volume': 'float64', 'Price': 'float64', 'S/L': 'float64', 'T/P': 'float64',
+        'Close_Time': 'datetime64[ns]', 'Close_Price': 'float64', 'Commission': 'float64',
+        'Swap': 'float64', 'Profit': 'float64'
     }
     
     for col, dtype in type_dict.items():
@@ -153,46 +110,33 @@ def finalize_positions_table(positions_table):
             elif dtype == 'float64':
                 positions_table[col] = pd.to_numeric(positions_table[col], errors='coerce')
             elif dtype == 'int64':
-                positions_table[col] = pd.to_numeric(positions_table[col], errors='coerce').astype('Int64')  # Use nullable integer type
+                positions_table[col] = pd.to_numeric(positions_table[col], errors='coerce').astype('Int64')
             else:
                 positions_table[col] = positions_table[col].astype(dtype)
     
-    # Handle missing values
     positions_table['S/L'].fillna(0, inplace=True)
     positions_table['T/P'].fillna(0, inplace=True)
     
     return positions_table
 
-# Modify the load_data function to use the new data processing functions
 def load_data(uploaded_file):
     if uploaded_file is not None:
         try:
-            # Use extract_tables function
             positions_table = extract_tables(uploaded_file)
-            
-            # Use finalize_positions_table function
             df = finalize_positions_table(positions_table)
-            
             if 'Profit' not in df.columns:
                 st.error("'Profit' column not found in the processed data. Please check your file.")
                 return None
-            
             return df
         except Exception as e:
             st.error(f"An error occurred while loading the data: {str(e)}")
             return None
     return None
 
-
-# Function to clear all history
 def clear_history():
-    if os.path.exists('trading_history.xlsx'):
-        os.remove('trading_history.xlsx')
-        st.sidebar.success("All history has been cleared.")
-    else:
-        st.sidebar.info("No history file found.")
+    st.session_state.df = None
+    st.sidebar.success("All history has been cleared.")
 
-# Enhanced function to calculate metrics
 def calculate_metrics(df, starting_balance):
     if 'Profit' not in df.columns or df.empty:
         return 0, 0, 0, 0, 0, 0, 0, 0
@@ -200,7 +144,6 @@ def calculate_metrics(df, starting_balance):
     total_commission = df['Commission'].sum() if 'Commission' in df.columns else 0
     total_profit = df['Profit'].sum() + total_commission
     win_rate = (df['Profit'] > 0).mean()
-    
     
     cumulative_returns = (df['Profit'].cumsum() + starting_balance) / starting_balance
     peak = cumulative_returns.cummax()
@@ -217,7 +160,6 @@ def calculate_metrics(df, starting_balance):
     
     return total_profit, win_rate, max_drawdown, sharpe_ratio, profit_factor, avg_win, avg_loss, total_commission
 
-# Function to create equity curve
 def create_equity_curve(df, starting_balance):
     if 'Profit' not in df.columns or df.empty:
         return None
@@ -273,7 +215,7 @@ def create_commission_impact_chart(df, starting_balance):
     )
 
     return fig
-    
+
 def create_daily_pnl(df):
     if 'Profit' not in df.columns or df.empty:
         return None
@@ -333,7 +275,6 @@ def create_hourly_heatmap(df):
 
     return fig
 
-
 def create_symbol_distribution(df):
     if 'Symbol' not in df.columns or df.empty:
         return None
@@ -355,10 +296,8 @@ def create_symbol_distribution(df):
 
     return fig
 
-
 def calculate_trade_returns(df, starting_balance):
     return df['Profit'] / starting_balance
-
 
 def create_trade_duration_analysis(df):
     if 'Time' not in df.columns or 'Time.1' not in df.columns or 'Profit' not in df.columns or df.empty:
@@ -572,30 +511,19 @@ def centered_button(label, key):
             <button id="{key}"></button>
         </div>
     """
-
-
-# Main Streamlit app
+    
 def main():
     inject_custom_css()
 
-    # Add Font Awesome
     st.markdown("""
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
         """, unsafe_allow_html=True)
 
-    # Initialize session states
-    if 'seen_welcome' not in st.session_state:
-        st.session_state.seen_welcome = False
-    if 'current_page' not in st.session_state:
-        st.session_state.current_page = "Overview"
-    if 'df' not in st.session_state:
-        st.session_state.df = None
-
-    # Sidebar
     with st.sidebar:
-        # Add logo to the top of the sidebar
-        logo = Image.open('/Users/shanthvidyababu/Downloads/LOGO.png')
-        st.image(logo, use_column_width=True, output_format="PNG")
+        if logo is not None:
+            st.image(logo, use_column_width=True, output_format="PNG")
+        else:
+            st.warning("Logo not found. Please check the assets folder.")
         
         st.sidebar.markdown('<br><br><br><br>', unsafe_allow_html=True)
 
@@ -622,7 +550,6 @@ def main():
                 </style>
             """, unsafe_allow_html=True)
             
-            # Create an empty space to push the button down
             st.markdown("<div style='padding: 15vh'></div>", unsafe_allow_html=True)
             
             if st.button("Enter Dashboard", key="enter_dashboard"):
@@ -630,24 +557,19 @@ def main():
                 st.rerun()
             
         else:
-            # Sidebar inputs
             starting_balance = st.number_input("Enter starting balance ($)", min_value=1.0, value=10000.0, step=1000.0)
             
-            # File uploader
             uploaded_file = st.file_uploader("Choose an Excel file", type="xlsx")
             if uploaded_file is not None:
                 st.session_state.df = load_data(uploaded_file)
                 if st.session_state.df is not None:
                     st.success("Data loaded and processed successfully!")
 
-            # Clear history button
             if st.button("Clear All History"):
-                st.session_state.df = None
-                st.success("All history has been cleared.")
+                clear_history()
 
-            st.markdown("---")  # Add a separator
+            st.markdown("---")
 
-            # Create Streamlit buttons
             if st.button("📊 Overview", key="btn_overview", use_container_width=True):
                 st.session_state.current_page = "Overview"
             
@@ -660,7 +582,6 @@ def main():
             if st.button("🎲 Monte Carlo Simulation", key="btn_monte_carlo", use_container_width=True):
                 st.session_state.current_page = "Monte Carlo"
 
-    # Main content area
     if not st.session_state.seen_welcome:
         st.title("Welcome Associate!")
         st.write('')
