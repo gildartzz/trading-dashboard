@@ -14,7 +14,7 @@ This Advanced Trading Dashboard is a Streamlit-based web application designed to
 - **Profit Analysis**: Daily profit/loss charts and symbol distribution.
 - **Time-based Analysis**: Hourly returns heatmap and trade duration analysis.
 - **Monte Carlo Simulation**: Forecast potential future performance based on historical data.
-- **PDF Report Generation**: Download key metrics and charts in PDF format.
+- **PDF Report Generation**: Download key metrics and charts in PDF format( coming soon)
 
 ## Installation
 
